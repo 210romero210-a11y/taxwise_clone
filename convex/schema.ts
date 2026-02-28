@@ -47,4 +47,33 @@ export default defineSchema({
     email: v.optional(v.string()),
     role: v.string(), // "Admin", "Preparer", "Client"
   }).index("by_token", ["tokenIdentifier"]),
+
+  // Form field metadata for Interview Mode wizard
+  formFields: defineTable({
+    fieldKey: v.string(), // e.g., "1040_Line1z", "Box1"
+    fieldLabel: v.string(), // e.g., "Wages, salaries, tips"
+    taxTopic: v.string(), // e.g., "Income", "Deductions", "Credits"
+    inputType: v.string(), // e.g., "currency", "number", "text", "boolean"
+    validationRules: v.optional(v.object({
+      required: v.optional(v.boolean()),
+      min: v.optional(v.number()),
+      max: v.optional(v.number()),
+      pattern: v.optional(v.string()),
+    })),
+    metadata: v.optional(v.object({
+      helpText: v.optional(v.string()),
+      placeholder: v.optional(v.string()),
+      relatedFields: v.optional(v.array(v.string())),
+      formType: v.optional(v.string()), // "1040", "W2", "SchA", "SchC"
+      lineNumber: v.optional(v.string()),
+    })),
+  }).index("by_taxTopic", ["taxTopic"]).index("by_fieldKey", ["fieldKey"]),
+
+  // Running totals for incremental sum tracking
+  taxTotals: defineTable({
+    returnId: v.id("returns"),
+    fieldKey: v.string(), // The field this total represents
+    accumulatedAmount: v.number(), // Running total for this field
+    updatedAt: v.number(), // Timestamp of last update
+  }).index("by_return", ["returnId"]).index("by_return_fieldKey", ["returnId", "fieldKey"]),
 });

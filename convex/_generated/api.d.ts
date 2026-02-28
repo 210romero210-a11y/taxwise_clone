@@ -14,6 +14,7 @@ import type * as calculations from "../calculations.js";
 import type * as diagnostics from "../diagnostics.js";
 import type * as fields from "../fields.js";
 import type * as files from "../files.js";
+import type * as formFields from "../formFields.js";
 import type * as formInstances from "../formInstances.js";
 import type * as ingest from "../ingest.js";
 import type * as migrations from "../migrations.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   diagnostics: typeof diagnostics;
   fields: typeof fields;
   files: typeof files;
+  formFields: typeof formFields;
   formInstances: typeof formInstances;
   ingest: typeof ingest;
   migrations: typeof migrations;

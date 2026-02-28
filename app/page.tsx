@@ -2,10 +2,13 @@
 
 import { Sidebar } from "@/components/Sidebar";
 import { MainViewport } from "@/components/MainViewport";
+import { InterviewModeWizard } from "@/components/InterviewModeWizard";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useEffect, useState, useMemo } from "react";
 import { Id } from "../convex/_generated/dataModel";
+import { LayoutGrid, ListChecks } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const returns = useQuery(api.returns.listReturns);
@@ -17,6 +20,27 @@ export default function Home() {
 
   const [activeReturnId, setActiveReturnId] = useState<Id<"returns"> | null>(null);
   const [activeInstanceId, setActiveInstanceId] = useState<Id<"formInstances"> | null>(null);
+  
+  // View mode state: "interview" | "form" - persisted to localStorage
+  // Initialize with default, then sync with localStorage on client mount
+  const [viewMode, setViewMode] = useState<"interview" | "form">("form");
+  const [isViewModeLoaded, setIsViewModeLoaded] = useState(false);
+
+  // Load view mode from localStorage on client mount
+  useEffect(() => {
+    const saved = localStorage.getItem("taxwise_viewMode");
+    if (saved === "interview" || saved === "form") {
+      setViewMode(saved);
+    }
+    setIsViewModeLoaded(true);
+  }, []);
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    if (isViewModeLoaded) {
+      localStorage.setItem("taxwise_viewMode", viewMode);
+    }
+  }, [viewMode, isViewModeLoaded]);
 
   // Query fields for the active 1040 instance to get the live refund amount
   const activeInstance = useMemo(
@@ -98,6 +122,34 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Mode Toggle */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("form")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                  viewMode === "form"
+                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                )}
+              >
+                <LayoutGrid size={14} />
+                Form
+              </button>
+              <button
+                onClick={() => setViewMode("interview")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                  viewMode === "interview"
+                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                )}
+              >
+                <ListChecks size={14} />
+                Interview
+              </button>
+            </div>
+            <div className="h-6 w-px bg-slate-300 dark:bg-slate-700"></div>
             <div className="bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-200 dark:border-green-800 flex items-center gap-2">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               {liveRefundDisplay}
@@ -108,9 +160,17 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Workspace */}
-        {activeInstanceId ? (
-          <MainViewport instanceId={activeInstanceId} />
+        {/* Main Workspace - Render based on viewMode */}
+        {activeInstanceId && activeReturnId ? (
+          viewMode === "interview" ? (
+            <InterviewModeWizard
+              returnId={activeReturnId}
+              instanceId={activeInstanceId}
+              onComplete={() => setViewMode("form")}
+            />
+          ) : (
+            <MainViewport instanceId={activeInstanceId} />
+          )
         ) : (
           <div className="flex-1 flex items-center justify-center text-slate-500">
             Initializing Form Environment...
