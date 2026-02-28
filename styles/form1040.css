@@ -1,0 +1,103 @@
+/* Official IRS Form 1040 Print Styles */
+@media print {
+    @page {
+        size: letter;
+        margin: 0.5in;
+    }
+
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+}
+
+.form-1040-page {
+    width: 7.5in;
+    height: 10in;
+    position: relative;
+    background: white;
+    font-family: 'Inter', sans-serif;
+    color: black;
+    line-height: normal;
+    padding: 0.2in;
+    border: 1px solid #eee;
+    /* Light border for preview */
+    margin: 0 auto;
+}
+
+.pdf-slot {
+    position: absolute;
+    font-size: 10pt;
+    font-family: monospace;
+    font-weight: bold;
+    color: #00008b;
+    /* Professional Blue for extracted values */
+}
+
+/* Specific Line Positoning (Representative) */
+.f1040-wages {
+    top: 3.2in;
+    left: 5.8in;
+}
+
+.f1040-interest {
+    top: 3.4in;
+    left: 5.8in;
+}
+
+.f1040-agi {
+    top: 5.4in;
+    left: 5.8in;
+}
+
+.f1040-refund {
+    top: 8.9in;
+    left: 5.8in;
+}
+
+.f1040-header {
+    border-bottom: 2px solid black;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.f1040-section-title {
+    background: #f0f0f0;
+    font-weight: black;
+    padding: 2px 5px;
+    border: 1px solid black;
+    font-size: 9pt;
+    text-transform: uppercase;
+}
+
+.f1040-line {
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+
+.f1040-line-num {
+    font-weight: bold;
+    width: 20px;
+}
+
+.f1040-line-label {
+    flex: 1;
+    font-size: 8pt;
+}
+
+.f1040-line-value {
+    width: 1.5in;
+    text-align: right;
+    font-family: monospace;
+    font-weight: bold;
+}
