@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MainViewport } from "@/components/MainViewport";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Id } from "../convex/_generated/dataModel";
 
 export default function Home() {
@@ -19,9 +19,16 @@ export default function Home() {
   const [activeInstanceId, setActiveInstanceId] = useState<Id<"formInstances"> | null>(null);
 
   // Query fields for the active 1040 instance to get the live refund amount
+  const activeInstance = useMemo(
+    () => instances?.find((i: any) => i._id === activeInstanceId),
+    [instances, activeInstanceId]
+  );
+  
+  // Only query fields for 1040 form instances
+  const shouldQueryFields = activeInstanceId && activeInstance?.formType === "1040";
   const activeInstanceFields = useQuery(
     api.fields.getFieldsForInstance,
-    activeInstanceId ? { instanceId: activeInstanceId } : "skip" as any
+    shouldQueryFields ? { instanceId: activeInstanceId } : "skip"
   );
 
   const refundField = activeInstanceFields?.find(
@@ -42,7 +49,7 @@ export default function Home() {
       if (returns.length > 0) {
         if (!activeReturnId) setActiveReturnId(returns[0]._id);
       } else {
-        createReturn({ name: "Doe, John", taxYear: 2023 }).then((id) => {
+        createReturn({ name: "Doe, John", taxYear: 2025 }).then((id) => {
           setActiveReturnId(id);
         });
       }

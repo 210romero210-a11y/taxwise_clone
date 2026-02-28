@@ -17,7 +17,6 @@ import type * as files from "../files.js";
 import type * as formInstances from "../formInstances.js";
 import type * as ingest from "../ingest.js";
 import type * as migrations from "../migrations.js";
-import type * as myFunctions from "../myFunctions.js";
 import type * as ocr from "../ocr.js";
 import type * as ocrInternal from "../ocrInternal.js";
 import type * as returns from "../returns.js";
@@ -38,7 +37,6 @@ declare const fullApi: ApiFromModules<{
   formInstances: typeof formInstances;
   ingest: typeof ingest;
   migrations: typeof migrations;
-  myFunctions: typeof myFunctions;
   ocr: typeof ocr;
   ocrInternal: typeof ocrInternal;
   returns: typeof returns;

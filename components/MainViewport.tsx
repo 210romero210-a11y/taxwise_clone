@@ -95,6 +95,7 @@ export function MainViewport({ instanceId }: { instanceId: Id<"formInstances"> }
     const updateField = useMutation(api.fields.updateField);
     const generateUploadUrl = useMutation(api.files.generateUploadUrl);
     const processDocument = useAction(api.ocr.processDocument);
+    const clearAllDiagnostics = useMutation(api.diagnostics.clearAllDiagnostics);
 
     const [isScanning, setIsScanning] = useState(false);
 
@@ -430,7 +431,12 @@ export function MainViewport({ instanceId }: { instanceId: Id<"formInstances"> }
                     <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
                         Diagnostics & Errors ({diagnostics?.length || 0})
                     </span>
-                    <button className="text-[10px] font-bold text-blue-600 uppercase hover:underline">Clear All</button>
+                    <button
+                        onClick={() => instance && clearAllDiagnostics({ returnId: instance.returnId })}
+                        className="text-[10px] font-bold text-blue-600 uppercase hover:underline"
+                    >
+                        Clear All
+                    </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
                     {diagnostics?.map((d: { _id: string; severity: string; fieldKey: string; message: string }) => (

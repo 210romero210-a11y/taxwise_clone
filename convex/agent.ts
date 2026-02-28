@@ -72,18 +72,12 @@ const phoenixAssistant = new Agent(components.agent, {
 
 /**
  * Main entry point for chatting with the AI Assistant.
+ * Uses asTextAction with explicit args for type-safe API.
  */
-export const chat = action({
+export const chat = phoenixAssistant.asTextAction({
     args: {
         message: v.string(),
         threadId: v.optional(v.string()),
     },
-    handler: async (ctx, args): Promise<string> => {
-        const { text } = await phoenixAssistant.generateText(
-            ctx,
-            { threadId: args.threadId },
-            { prompt: args.message }
-        );
-        return text as string;
-    },
+    stream: false,
 });

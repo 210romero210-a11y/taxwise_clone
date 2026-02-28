@@ -18,9 +18,13 @@ export async function POST(req: Request) {
     try {
         const { storageId, returnId } = await req.json();
 
-        if (!storageId || !returnId) {
+        // Runtime validation for Convex ID formats
+        const isValidStorageId = typeof storageId === 'string' && storageId.length > 0;
+        const isValidReturnId = typeof returnId === 'string' && returnId.length > 0;
+        
+        if (!isValidStorageId || !isValidReturnId) {
             return NextResponse.json(
-                { error: 'storageId and returnId are required' },
+                { error: 'Invalid ID format: IDs must be non-empty strings' },
                 { status: 400 }
             );
         }
@@ -45,6 +49,29 @@ export async function POST(req: Request) {
         return NextResponse.json(result);
     } catch (error: any) {
         console.error('OCR proxy error:', error);
+        
+        // More descriptive error handling based on error type
+        if (error.message?.includes('CONVEX_DEPLOYMENT')) {
+            return NextResponse.json(
+                { error: 'Convex deployment not configured. Please check CONVEX_DEPLOYMENT environment variable.' },
+                { status: 500 }
+            );
+        }
+        
+        if (error.message?.includes('fetch') || error.cause?.code === 'ENOTFOUND') {
+            return NextResponse.json(
+                { error: 'Unable to connect to Convex. Please check your network connection.' },
+                { status: 503 }
+            );
+        }
+        
+        if (error.message?.includes('rate limit') || error.message?.includes('RateLimiter')) {
+            return NextResponse.json(
+                { error: 'OCR processing rate limit exceeded. Please try again later.' },
+                { status: 429 }
+            );
+        }
+        
         return NextResponse.json(
             { error: error?.message || 'Failed to process document via Convex OCR pipeline.' },
             { status: 500 }
