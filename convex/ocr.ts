@@ -19,13 +19,14 @@ export const processDocument = action({
     args: {
         storageId: v.id("_storage"),
         returnId: v.id("returns"),
+        taxpayerRole: v.optional(v.string()),
     },
     handler: async (ctx, args): Promise<{ runId: RunId; scheduled: boolean }> => {
         const runId = await retrier.run(
             ctx,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (internal as any).ocrInternal.processDocumentInternal,
-            { storageId: args.storageId, returnId: args.returnId },
+            { storageId: args.storageId, returnId: args.returnId, taxpayerRole: args.taxpayerRole },
         );
         return { runId, scheduled: true };
     },

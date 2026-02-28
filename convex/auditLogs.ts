@@ -9,6 +9,7 @@ export const logEvent = internalMutation({
         fieldKey: v.optional(v.string()),
         previousValue: v.any(),
         newValue: v.any(),
+        source: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         await ctx.db.insert("auditLogs", {

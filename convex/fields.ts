@@ -30,6 +30,7 @@ export const updateField = mutation({
         isManualOverride: v.boolean(),
         isEstimated: v.optional(v.boolean()),
         isCalculated: v.optional(v.boolean()),
+        source: v.optional(v.string()), // "manual", "ai_ocr", "calculated"
     },
     handler: async (ctx, args) => {
         const existingField = await ctx.db
@@ -94,6 +95,17 @@ export const updateField = mutation({
         // TODO: In Phase 6, we will switch to WorkOS AuthKit role-based identity
         // const userId = await auth.userId(ctx);
 
+        /**
+         * Determine field source for audit trail - priority order:
+         * 1. Explicit source argument (highest priority)
+         * 2. Inferred from instance's documentSource (if AI OCR uploaded)
+         * 3. Inferred from isCalculated flag (calculated fields)
+         * 4. Default to "manual" (user-entered data)
+         */
+        const fieldSource = args.source || 
+            (instance.documentSource === "ai_ocr" ? "ai_ocr" : 
+             args.isCalculated ? "calculated" : "manual");
+
         await ctx.runMutation(internal.auditLogs.logEvent, {
             returnId: instance.returnId,
             userId,
@@ -101,6 +113,7 @@ export const updateField = mutation({
             fieldKey: args.fieldKey,
             previousValue: previousValue,
             newValue: args.value,
+            source: fieldSource,
         });
 
         // 4. Recalculate dependencies if not an internal calculation update

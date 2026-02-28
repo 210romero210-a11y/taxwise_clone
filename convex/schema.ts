@@ -14,6 +14,10 @@ export default defineSchema({
     status: v.string(), // "In Progress", "Complete", "Error"
     errorCount: v.optional(v.number()),
     storageId: v.optional(v.id("_storage")),
+    // Vault Explorer metadata
+    documentSource: v.optional(v.string()), // "upload", "ai_ocr", "manual"
+    uploadedAt: v.optional(v.number()),
+    taxpayerRole: v.optional(v.string()), // "primary", "spouse" (for MFJ)
   }).index("by_return", ["returnId"]),
   fields: defineTable({
     instanceId: v.id("formInstances"),
@@ -31,6 +35,7 @@ export default defineSchema({
     fieldKey: v.optional(v.string()),
     previousValue: v.any(),
     newValue: v.any(),
+    source: v.optional(v.string()), // "manual", "ai_ocr", "calculated"
     timestamp: v.number(),
   }).index("by_return", ["returnId"]),
 
