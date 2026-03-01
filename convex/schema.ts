@@ -81,4 +81,194 @@ export default defineSchema({
     accumulatedAmount: v.number(), // Running total for this field
     updatedAt: v.number(), // Timestamp of last update
   }).index("by_return", ["returnId"]).index("by_return_fieldKey", ["returnId", "fieldKey"]),
+
+  // =============================================================================
+  // IRS PUBLICATION 1345 - COMPLIANT USER AUTHENTICATION
+  // =============================================================================
+  // Extended users table with IRS-required security fields
+  usersExtended: defineTable({
+    userId: v.id("users"),
+    // IRS Publication 1345 - MFA Requirements
+    mfaEnabled: v.boolean(),
+    mfaMethod: v.optional(v.string()), // "authenticator", "sms", "email"
+    mfaSecret: v.optional(v.string()), // Encrypted TOTP secret
+    // Professional Preparer Credentials (IRS EFIN/PTIN)
+    preparerTIN: v.optional(v.string()), // PTIN or EIN
+    efin: v.optional(v.string()), // Electronic Filing Identification Number
+    // Session Security (15-min timeout, 12-hr re-auth)
+    lastAuthTime: v.optional(v.number()),
+    sessionExpiry: v.optional(v.number()),
+    lastActivityTime: v.optional(v.number()),
+    isPreparer: v.boolean(), // Professional preparer flag
+  }).index("by_user", ["userId"]),
+
+  // =============================================================================
+  // FLIGHT RECORDER - IMMUTABLE AUDIT TRAIL (IRS COMPLIANT)
+  // =============================================================================
+  // Cryptographically chained audit log entries for tamper detection
+  immutableAuditLogs: defineTable({
+    returnId: v.id("returns"),
+    userId: v.string(),
+    action: v.string(), // "Field Update", "Override", "OCR Scan", "Submission"
+    fieldKey: v.optional(v.string()),
+    previousValue: v.any(),
+    newValue: v.any(),
+    source: v.optional(v.string()), // "manual", "ai_ocr", "calculated", "mef_transmission"
+    timestamp: v.number(),
+    // Cryptographic chain for tamper detection
+    previousEntryHash: v.optional(v.string()), // SHA-256 hash of previous entry
+    entryHash: v.string(), // SHA-256 hash of this entry
+  }).index("by_return", ["returnId"]).index("by_timestamp", ["timestamp"]),
+
+  // Chain blocks for periodic hash verification
+  auditChainBlocks: defineTable({
+    startTimestamp: v.number(),
+    endTimestamp: v.number(),
+    blockHash: v.string(), // Combined hash of all entries in block
+    previousBlockHash: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_timestamp", ["startTimestamp"]),
+
+  // =============================================================================
+  // MEF ENGINE - MODERNIZED E-FILE TRANSMISSION
+  // =============================================================================
+  // MeF submission tracking
+  mefSubmissions: defineTable({
+    returnId: v.id("returns"),
+    submissionType: v.string(), // "1040", "1120", "941", etc.
+    taxYear: v.number(),
+    // XML Payload
+    xmlPayloadId: v.optional(v.id("_storage")),
+    xmlStatus: v.string(), // "generated", "validated", "transmitted", "accepted", "rejected"
+    // IRS Transmission
+    irsSubmissionId: v.optional(v.string()), // IRS assigned submission ID
+    irsReceiptTimestamp: v.optional(v.number()),
+    irsAcknowledgmentCode: v.optional(v.string()), // "ACCEPTED", "REJECTED"
+    irsErrorCodes: v.optional(v.array(v.string())),
+    // Transmission details
+    transmissionAttempts: v.optional(v.number()),
+    lastTransmissionError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_return", ["returnId"]).index("by_irs_submission", ["irsSubmissionId"]),
+
+  // MeF validation rules results
+  mefValidationResults: defineTable({
+    submissionId: v.id("mefSubmissions"),
+    ruleId: v.string(), // MeF business rule identifier
+    ruleName: v.string(),
+    severity: v.string(), // "error", "warning"
+    message: v.string(),
+    fieldKey: v.optional(v.string()),
+    isPassed: v.boolean(),
+  }).index("by_submission", ["submissionId"]),
+
+  // =============================================================================
+  // BILINGUAL SUPPORT ENGINE - EN/ES LOCALIZATION
+  // =============================================================================
+  // Translation strings for EN/ES
+  translations: defineTable({
+    locale: v.string(), // "en" or "es"
+    category: v.string(), // "diagnostics", "forms", "help", "ui"
+    key: v.string(), // Unique key within category
+    value: v.string(), // Translated text
+  }).index("by_locale_category", ["locale", "category"]).index("by_key", ["key"]),
+
+  // Spanish form metadata for print engine
+  spanishForms: defineTable({
+    formType: v.string(), // "1040", "SchA", "SchC", etc.
+    spanishTitle: v.string(),
+    availableForPrint: v.boolean(),
+    taxYears: v.array(v.number()),
+  }).index("by_form", ["formType"]),
+
+  // User locale preferences
+  userPreferences: defineTable({
+    userId: v.id("users"),
+    locale: v.string(), // "en" or "es"
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // =============================================================================
+  // METADATA-DRIVEN FORM ENGINE - DYNAMIC FORM DEFINITIONS
+  // =============================================================================
+  // JSON schema blueprints for IRS forms
+  formDefinitions: defineTable({
+    formCode: v.string(), // e.g., "1040", "1120S", "990"
+    year: v.number(),
+    entityType: v.string(), // "Individual" | "Business" | "Specialty"
+    formName: v.string(),
+    sections: v.any(), // JSON structure for form sections
+    metadata: v.any(), // Additional form-specific data
+    isActive: v.boolean(),
+  }).index("by_formCode_year", ["formCode", "year"]).index("by_entityType", ["entityType"]),
+
+  // Field metadata with formulas and dependencies
+  fieldDefinitions: defineTable({
+    formCode: v.string(),
+    year: v.number(),
+    fieldKey: v.string(), // e.g., "Line1z", "Box1"
+    label: v.string(),
+    labelEs: v.string(), // Spanish label
+    fieldType: v.string(), // "currency" | "number" | "text" | "boolean" | "date"
+    isCalculated: v.boolean(),
+    formula: v.optional(v.string()),
+    dependsOn: v.array(v.string()), // Array of field keys this depends on
+    isRequired: v.boolean(),
+    category: v.string(), // "income" | "deduction" | "credit" | "info"
+    irsLineReference: v.string(),
+    helpText: v.string(),
+    helpTextEs: v.string(),
+  }).index("by_formCode_year", ["formCode", "year"]).index("by_fieldKey", ["fieldKey"]),
+
+  // Reusable IRS business rules
+  validationRules: defineTable({
+    ruleId: v.string(), // e.g., "WAGES_POSITIVE"
+    formCode: v.string(),
+    year: v.number(),
+    fieldKey: v.string(),
+    condition: v.string(), // JSON logic for when rule applies
+    errorMessageEn: v.string(),
+    errorMessageEs: v.string(),
+    severity: v.string(), // "error" | "warning"
+    isActive: v.boolean(),
+  }).index("by_formCode_year", ["formCode", "year"]).index("by_ruleId", ["ruleId"]),
+
+  // Cross-form field mapping
+  mappingEngine: defineTable({
+    sourceFormCode: v.string(),
+    sourceYear: v.number(),
+    sourceFieldKey: v.string(),
+    targetFormCode: v.string(),
+    targetYear: v.number(),
+    targetFieldKey: v.string(),
+    mappingType: v.string(), // "flow_through" | "k1_sync" | "calculation"
+    transform: v.optional(v.string()), // Optional transformation formula
+    isActive: v.boolean(),
+  }).index("by_source", ["sourceFormCode", "sourceYear", "sourceFieldKey"]).index("by_target", ["targetFormCode", "targetYear", "targetFieldKey"]),
+
+  // K-1 pass-through data
+  k1Records: defineTable({
+    returnId: v.id("returns"), // The business return - 1065/1120S
+    partnerId: v.string(), // Recipient's individual return ID
+    ein: v.string(),
+    recipientName: v.string(),
+    recipientTin: v.string(),
+    k1Data: v.any(), // JSON with all K-1 fields
+    syncStatus: v.string(), // "pending" | "synced" | "error"
+    syncedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_return", ["returnId"]).index("by_partnerId", ["partnerId"]).index("by_syncStatus", ["syncStatus"]),
+
+  // Entity lifecycle tracking
+  lifecycleStatus: defineTable({
+    returnId: v.id("returns"),
+    entityType: v.string(), // "Individual" | "Business" | "Specialty"
+    status: v.string(), // "Draft" | "Review" | "Ready" | "Transmitted" | "Accepted" | "Rejected"
+    previousStatus: v.optional(v.string()),
+    statusChangedAt: v.number(),
+    changedBy: v.string(),
+    diagnosticCount: v.number(),
+    lastDiagnosticRunAt: v.optional(v.number()),
+  }).index("by_return", ["returnId"]).index("by_status", ["status"]).index("by_entityType", ["entityType"]),
 });

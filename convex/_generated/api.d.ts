@@ -12,16 +12,24 @@ import type * as agent from "../agent.js";
 import type * as auditLogs from "../auditLogs.js";
 import type * as calculations from "../calculations.js";
 import type * as diagnostics from "../diagnostics.js";
+import type * as fieldDefinitions from "../fieldDefinitions.js";
 import type * as fields from "../fields.js";
 import type * as files from "../files.js";
+import type * as formDefinitions from "../formDefinitions.js";
 import type * as formFields from "../formFields.js";
 import type * as formInstances from "../formInstances.js";
+import type * as i18n from "../i18n.js";
 import type * as idScan from "../idScan.js";
 import type * as ingest from "../ingest.js";
+import type * as k1Records from "../k1Records.js";
+import type * as lifecycleStatus from "../lifecycleStatus.js";
+import type * as mappingEngine from "../mappingEngine.js";
+import type * as mefEngine from "../mefEngine.js";
 import type * as migrations from "../migrations.js";
 import type * as ocr from "../ocr.js";
 import type * as ocrInternal from "../ocrInternal.js";
 import type * as returns from "../returns.js";
+import type * as validationRules from "../validationRules.js";
 
 import type {
   ApiFromModules,
@@ -34,16 +42,24 @@ declare const fullApi: ApiFromModules<{
   auditLogs: typeof auditLogs;
   calculations: typeof calculations;
   diagnostics: typeof diagnostics;
+  fieldDefinitions: typeof fieldDefinitions;
   fields: typeof fields;
   files: typeof files;
+  formDefinitions: typeof formDefinitions;
   formFields: typeof formFields;
   formInstances: typeof formInstances;
+  i18n: typeof i18n;
   idScan: typeof idScan;
   ingest: typeof ingest;
+  k1Records: typeof k1Records;
+  lifecycleStatus: typeof lifecycleStatus;
+  mappingEngine: typeof mappingEngine;
+  mefEngine: typeof mefEngine;
   migrations: typeof migrations;
   ocr: typeof ocr;
   ocrInternal: typeof ocrInternal;
   returns: typeof returns;
+  validationRules: typeof validationRules;
 }>;
 
 /**
