@@ -130,8 +130,100 @@ async function applyFlowThroughMappings(
 import { getCalculatedFields as getCalculatedFieldsQuery, getFieldsByForm as getFieldsByFormQuery } from "./fieldDefinitions";
 
 // =============================================================================
-// HELPER: Execute formula based on field definition
+// HELPER: Safe Expression Evaluator (no eval/new Function)
 // =============================================================================
+
+/**
+ * Safe expression evaluator that parses and evaluates simple arithmetic
+ * expressions without using eval() or new Function()
+ * Supports: +, -, *, /, parentheses, and numbers
+ */
+function evaluateSafeExpression(expression: string): number {
+    // First pass: validate characters (only allow numbers, operators, parens, spaces)
+    const validChars = /^[0-9+\-*/().\s]+$/;
+    if (!validChars.test(expression)) {
+        return NaN;
+    }
+
+    // Remove all whitespace
+    const cleanExpr = expression.replace(/\s+/g, '');
+    
+    // Tokenize the expression
+    const tokens: string[] = [];
+    let currentNum = '';
+    
+    for (let i = 0; i < cleanExpr.length; i++) {
+        const char = cleanExpr[i];
+        if ('0123456789.'.includes(char)) {
+            currentNum += char;
+        } else if (char) {
+            if (currentNum) {
+                tokens.push(currentNum);
+                currentNum = '';
+            }
+            tokens.push(char);
+        }
+    }
+    if (currentNum) {
+        tokens.push(currentNum);
+    }
+
+    // Parse using shunting-yard algorithm for precedence
+    const output: (number | string)[] = [];
+    const operators: string[] = [];
+    const precedence: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2 };
+
+    for (const token of tokens) {
+        if (!isNaN(Number(token))) {
+            output.push(Number(token));
+        } else if ('+-*/'.includes(token)) {
+            while (
+                operators.length > 0 && 
+                operators[operators.length - 1] !== '(' &&
+                precedence[operators[operators.length - 1]] >= precedence[token]
+            ) {
+                output.push(operators.pop()!);
+            }
+            operators.push(token);
+        } else if (token === '(') {
+            operators.push(token);
+        } else if (token === ')') {
+            while (operators.length > 0 && operators[operators.length - 1] !== '(') {
+                output.push(operators.pop()!);
+            }
+            if (operators.length > 0) {
+                operators.pop(); // Remove '('
+            }
+        }
+    }
+
+    while (operators.length > 0) {
+        output.push(operators.pop()!);
+    }
+
+    // Evaluate the RPN expression
+    const stack: number[] = [];
+    for (const token of output) {
+        if (typeof token === 'number') {
+            stack.push(token);
+        } else {
+            if (stack.length < 2) return NaN;
+            const b = stack.pop()!;
+            const a = stack.pop()!;
+            let result: number;
+            switch (token) {
+                case '+': result = a + b; break;
+                case '-': result = a - b; break;
+                case '*': result = a * b; break;
+                case '/': result = b !== 0 ? a / b : NaN; break;
+                default: return NaN;
+            }
+            stack.push(result);
+        }
+    }
+
+    return stack.length === 1 ? stack[0] : NaN;
+}
 
 /**
  * Execute a formula and return calculated value
@@ -209,7 +301,7 @@ function executeFormula(
         return 0;
     }
 
-    // Evaluate the arithmetic expression
+    // Evaluate the arithmetic expression using safe evaluator
     try {
         // Only allow safe characters for evaluation
         const safeExpression = expression.replace(/[^0-9+\-*/().\s]/g, "");
@@ -217,8 +309,8 @@ function executeFormula(
             // It's just a number
             return parseFloat(safeExpression);
         }
-        // Use Function constructor for safe evaluation (only + - * / and numbers)
-        const result = new Function(`return ${safeExpression}`)();
+        // Use safe expression evaluator (no eval/new Function)
+        const result = evaluateSafeExpression(safeExpression);
         return typeof result === "number" && !isNaN(result) ? result : 0;
     } catch (error) {
         console.error("Formula evaluation error:", error, "Expression:", expression);

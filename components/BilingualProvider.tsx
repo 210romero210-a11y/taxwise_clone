@@ -74,7 +74,8 @@ export function BilingualProvider({
       // Continue anyway - locale state is still in memory
     }
     if (userId) {
-      setUserLocale({ userId, locale: newLocale });
+      // Cast userId to the expected type for Convex
+      setUserLocale({ userId: userId as any, locale: newLocale });
     }
   };
 

@@ -220,7 +220,7 @@ export function DynamicFormRenderer({
   // Expand all sections by default
   useEffect(() => {
     if (formDefinition?.sections) {
-      const allSections = new Set(formDefinition.sections.map((s: FormSection) => s.sectionId));
+      const allSections = new Set<string>(formDefinition.sections.map((s: FormSection) => s.sectionId));
       setExpandedSections(allSections);
     }
   }, [formDefinition]);
@@ -330,7 +330,8 @@ export function DynamicFormRenderer({
 
   const getFieldDefinition = useCallback(
     (fieldKey: string): FieldDefinition | undefined => {
-      return fieldDefinitions.find((fd: FieldDefinition) => fd.fieldKey === fieldKey);
+      // Cast to handle type mismatch between schema string and literal type
+      return (fieldDefinitions as FieldDefinition[]).find((fd: FieldDefinition) => fd.fieldKey === fieldKey);
     },
     [fieldDefinitions]
   );
@@ -358,7 +359,7 @@ export function DynamicFormRenderer({
 
     const currentTopic = taxTopicsList[currentTopicIndex];
     const topicFields = currentTopicFields.filter((f: any) => 
-      fieldDefinitions.some((fd: FieldDefinition) => fd.fieldKey === f.fieldKey)
+      (fieldDefinitions as FieldDefinition[]).some((fd: FieldDefinition) => fd.fieldKey === f.fieldKey)
     );
     
     const currentField = topicFields[currentFieldIndex];

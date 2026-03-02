@@ -37,3 +37,37 @@ describe("Self-Employment Tax Math Audit", () => {
         expect(totalTax).toBe(27193);
     });
 });
+
+describe("Self-Employment Tax (2024)", () => {
+    test("Calculates correct tax for $100,000 profit (2024)", () => {
+        // 100,000 * 0.9235 = 92,350
+        // SS: 92,350 * 0.124 = 11,451.4
+        // Medicare: 92,350 * 0.029 = 2,678.15
+        // Total: 14,129.55 -> 14,130
+        const { totalTax, deduction } = calculateSETax(100000, 2024);
+        expect(totalTax).toBe(14130);
+        expect(deduction).toBe(7065);
+    });
+
+    test("Respects Social Security Wage Limit ($168,600 for 2024)", () => {
+        // Profit: $200,000
+        // SE Income: 200,000 * 0.9235 = 184,700
+        // SS Tax (Capped at 168,600 for 2024): 168,600 * 0.124 = 20,906.4
+        // Medicare Tax (No cap): 184,700 * 0.029 = 5,356.3
+        // Total: 26,262.7 -> 26,263
+        const { totalTax } = calculateSETax(200000, 2024);
+        expect(totalTax).toBe(26263);
+    });
+
+    test("Returns 0 for negative profit", () => {
+        const { totalTax, deduction } = calculateSETax(-10000, 2024);
+        expect(totalTax).toBe(0);
+        expect(deduction).toBe(0);
+    });
+
+    test("Returns 0 for zero profit", () => {
+        const { totalTax, deduction } = calculateSETax(0, 2024);
+        expect(totalTax).toBe(0);
+        expect(deduction).toBe(0);
+    });
+});

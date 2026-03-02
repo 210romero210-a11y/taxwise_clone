@@ -259,17 +259,18 @@ export const listValidationRules = query({
     const allRules = await ctx.db.query("validationRules").collect();
     const total = allRules.length;
     
-    // Get paginated results
+    // Get paginated results - Convex doesn't support skip, use take and manual slice
     const rules = await ctx.db
       .query("validationRules")
       .order("desc")
-      .skip(skip)
-      .take(limit);
+      .take(skip + limit);
+    
+    const paginatedRules = rules.slice(skip, skip + limit);
     
     return {
-      rules,
+      rules: paginatedRules,
       total,
-      hasMore: skip + rules.length < total,
+      hasMore: skip + paginatedRules.length < total,
     };
   },
 });

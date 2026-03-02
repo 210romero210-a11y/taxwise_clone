@@ -53,6 +53,54 @@ const TAX_BRACKETS_2023: Record<FilingStatus, TaxBracket[]> = {
     ],
 };
 
+const TAX_BRACKETS_2024: Record<FilingStatus, TaxBracket[]> = {
+    'Single': [
+        { limit: 11600, rate: 0.10 },
+        { limit: 47150, rate: 0.12 },
+        { limit: 100525, rate: 0.22 },
+        { limit: 191950, rate: 0.24 },
+        { limit: 243725, rate: 0.32 },
+        { limit: 609350, rate: 0.35 },
+        { limit: Infinity, rate: 0.37 },
+    ],
+    'Married Filing Jointly': [
+        { limit: 23200, rate: 0.10 },
+        { limit: 94300, rate: 0.12 },
+        { limit: 201050, rate: 0.22 },
+        { limit: 383900, rate: 0.24 },
+        { limit: 487450, rate: 0.32 },
+        { limit: 731200, rate: 0.35 },
+        { limit: Infinity, rate: 0.37 },
+    ],
+    'Married Filing Separately': [
+        { limit: 11600, rate: 0.10 },
+        { limit: 47150, rate: 0.12 },
+        { limit: 100525, rate: 0.22 },
+        { limit: 191950, rate: 0.24 },
+        { limit: 243725, rate: 0.32 },
+        { limit: 365600, rate: 0.35 },
+        { limit: Infinity, rate: 0.37 },
+    ],
+    'Head of Household': [
+        { limit: 16550, rate: 0.10 },
+        { limit: 63100, rate: 0.12 },
+        { limit: 100500, rate: 0.22 },
+        { limit: 191950, rate: 0.24 },
+        { limit: 243725, rate: 0.32 },
+        { limit: 609350, rate: 0.35 },
+        { limit: Infinity, rate: 0.37 },
+    ],
+    'Qualifying Widow(er)': [
+        { limit: 23200, rate: 0.10 },
+        { limit: 94300, rate: 0.12 },
+        { limit: 201050, rate: 0.22 },
+        { limit: 383900, rate: 0.24 },
+        { limit: 487450, rate: 0.32 },
+        { limit: 731200, rate: 0.35 },
+        { limit: Infinity, rate: 0.37 },
+    ],
+};
+
 const TAX_BRACKETS_2025: Record<FilingStatus, TaxBracket[]> = {
     'Single': [
         { limit: 12000, rate: 0.10 },
@@ -103,15 +151,23 @@ const TAX_BRACKETS_2025: Record<FilingStatus, TaxBracket[]> = {
 
 /**
  * Calculates federal income tax based on specified tax year.
+ * Supports years 2023, 2024, and 2025.
  */
 export function calculateFederalTax(taxableIncome: number, status: FilingStatus, taxYear: number): number {
-    if (taxYear !== 2023 && taxYear !== 2025) {
+    if (taxYear !== 2023 && taxYear !== 2024 && taxYear !== 2025) {
         throw new Error(`Tax year ${taxYear} calculations are not yet implemented.`);
     }
 
     if (taxableIncome <= 0) return 0;
 
-    const brackets = taxYear === 2025 ? TAX_BRACKETS_2025[status] : TAX_BRACKETS_2023[status];
+    let brackets: TaxBracket[];
+    if (taxYear === 2025) {
+        brackets = TAX_BRACKETS_2025[status];
+    } else if (taxYear === 2024) {
+        brackets = TAX_BRACKETS_2024[status];
+    } else {
+        brackets = TAX_BRACKETS_2023[status];
+    }
     let totalTax = 0;
     let previousLimit = 0;
 

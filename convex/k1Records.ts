@@ -156,15 +156,17 @@ export const listK1Records = query({
     
     let query = ctx.db.query("k1Records").order("desc");
     
+    // For cursor-based pagination, we'll fetch more and slice manually
+    const allRecords = await query.take(limit + (cursor ? 1 : 0));
+    
+    // If there's a cursor, filter to only records created before the cursor
+    let results = allRecords;
     if (cursor) {
-      // Get the record at the cursor to use as a starting point
       const cursorRecord = await ctx.db.get(cursor);
       if (cursorRecord) {
-        query = query.filter((q) => q.lt("_creationTime", cursorRecord._creationTime));
+        results = allRecords.filter(r => r._creationTime < cursorRecord._creationTime);
       }
     }
-    
-    const results = await query.take(limit);
     
     // Determine if there are more results
     const hasMore = results.length === limit;
@@ -260,7 +262,9 @@ export const updateK1Record = mutation({
     // Clear syncedAt if status changed from synced
     if (updates.syncStatus && updates.syncStatus !== existing.syncStatus) {
       if (updates.syncStatus === "pending") {
-        updates.syncedAt = undefined;
+        // Create a new object without syncedAt
+        const { syncedAt, ...rest } = updates as typeof updates & { syncedAt?: number };
+        Object.assign(updates, rest);
       }
     }
     
@@ -360,7 +364,7 @@ export const generateK1FromPartnership = internalMutation({
       // Get all fields for this K-1 form
       const k1Fields = await ctx.db
         .query("fields")
-        .withIndex("by_instance", (q) => q.eq("instanceId", k1Form.instanceId))
+        .withIndex("by_instance", (q) => q.eq("instanceId", k1Form._id))
         .collect();
       
       // Extract K-1 data
@@ -444,7 +448,7 @@ export const generateK1FromPartnership = internalMutation({
         returnId: args.partnershipReturnId,
         userId: args.userId,
         action: "K-1 Generated",
-        fieldKey: k1Form.instanceId,
+        fieldKey: k1Form._id,
         previousValue: null,
         newValue: k1Data,
         source: "calculated",
@@ -494,7 +498,7 @@ export const generateK1FromSCorporation = internalMutation({
       // Get fields for this K-1
       const k1Fields = await ctx.db
         .query("fields")
-        .withIndex("by_instance", (q) => q.eq("instanceId", k1Form.instanceId))
+        .withIndex("by_instance", (q) => q.eq("instanceId", k1Form._id))
         .collect();
       
       // Extract K-1 data
@@ -750,6 +754,7 @@ export const syncAllPendingK1s = internalMutation({
       errors: [] as string[],
     };
     
+    // Since Convex doesn't support transactions, we process sequentially
     for (const k1Record of pendingK1s) {
       try {
         // Get the K-1 record with latest data
@@ -766,109 +771,100 @@ export const syncAllPendingK1s = internalMutation({
           continue;
         }
         
-        // Sync the K-1 to the individual return
-        const syncResult = await ctx.db.transaction(async (tx) => {
-          // Get the K-1 record again within transaction
-          const k1Data = k1.k1Data as K1Data;
-          
-          // Get the partner's individual return
-          const partnerIdString = k1.partnerId as string;
-          const individualReturn = await tx.get(partnerIdString as Id<"returns">);
-          if (!individualReturn) {
-            await tx.patch(k1._id, { syncStatus: "error" });
-            return { success: false, error: "Partner return not found" };
-          }
-          
-          // Find or create Schedule E
-          let scheduleE = await tx
-            .query("formInstances")
-            .withIndex("by_return", (q) => q.eq("returnId", partnerIdString as Id<"returns">))
-            .filter((q) => q.eq(q.field("formType"), "ScheduleE"))
+        // Get the partner's individual return
+        const partnerIdString = k1.partnerId as string;
+        const individualReturn = await ctx.db.get(partnerIdString as Id<"returns">);
+        if (!individualReturn) {
+          await ctx.db.patch(k1._id, { syncStatus: "error" });
+          results.failed++;
+          results.errors.push(`Partner return not found for K-1: ${k1._id}`);
+          continue;
+        }
+        
+        // Find or create Schedule E
+        let scheduleE = await ctx.db
+          .query("formInstances")
+          .withIndex("by_return", (q) => q.eq("returnId", partnerIdString as Id<"returns">))
+          .filter((q) => q.eq(q.field("formType"), "ScheduleE"))
+          .first();
+        
+        if (!scheduleE) {
+          const instanceId = await ctx.db.insert("formInstances", {
+            returnId: partnerIdString as Id<"returns">,
+            formType: "ScheduleE",
+            instanceName: "Schedule E - Supplemental Income",
+            status: "In Progress",
+            documentSource: "calculated",
+          });
+          scheduleE = await ctx.db.get(instanceId);
+        }
+        
+        // Map K-1 fields to Schedule E fields
+        const k1Data = k1.k1Data as K1Data;
+        const updates: { fieldKey: string; value: any }[] = [];
+        
+        if (k1Data.ordinaryBusinessIncome !== undefined) {
+          updates.push({ fieldKey: "line2_partnership", value: k1Data.ordinaryBusinessIncome });
+        }
+        if (k1Data.section199ADeduction !== undefined) {
+          updates.push({ fieldKey: "line2_section199A", value: k1Data.section199ADeduction });
+        }
+        if (k1Data.charitableContributions !== undefined) {
+          updates.push({ fieldKey: "line3_charitable", value: k1Data.charitableContributions });
+        }
+        
+        // Apply updates
+        for (const update of updates) {
+          const existing = await ctx.db
+            .query("fields")
+            .withIndex("by_instance", (q) => q.eq("instanceId", scheduleE!._id))
+            .filter((q) => q.eq(q.field("fieldKey"), update.fieldKey))
             .first();
           
-          if (!scheduleE) {
-            const instanceId = await tx.insert("formInstances", {
-              returnId: partnerIdString as Id<"returns">,
-              formType: "ScheduleE",
-              instanceName: "Schedule E - Supplemental Income",
-              status: "In Progress",
-              documentSource: "calculated",
+          if (existing) {
+            await ctx.db.patch(existing._id, {
+              value: update.value,
+              isManualOverride: false,
+              isCalculated: true,
             });
-            scheduleE = await tx.get(instanceId);
+          } else {
+            await ctx.db.insert("fields", {
+              instanceId: scheduleE!._id,
+              fieldKey: update.fieldKey,
+              value: update.value,
+              isManualOverride: false,
+              isCalculated: true,
+            });
           }
-          
-          // Map K-1 fields to Schedule E fields
-          const updates: { fieldKey: string; value: any }[] = [];
-          
-          if (k1Data.ordinaryBusinessIncome !== undefined) {
-            updates.push({ fieldKey: "line2_partnership", value: k1Data.ordinaryBusinessIncome });
-          }
-          if (k1Data.section199ADeduction !== undefined) {
-            updates.push({ fieldKey: "line2_section199A", value: k1Data.section199ADeduction });
-          }
-          if (k1Data.charitableContributions !== undefined) {
-            updates.push({ fieldKey: "line3_charitable", value: k1Data.charitableContributions });
-          }
-          
-          // Apply updates
-          for (const update of updates) {
-            const existing = await tx
-              .query("fields")
-              .withIndex("by_instance", (q) => q.eq("instanceId", scheduleE!._id))
-              .filter((q) => q.eq(q.field("fieldKey"), update.fieldKey))
-              .first();
-            
-            if (existing) {
-              await tx.patch(existing._id, {
-                value: update.value,
-                isManualOverride: false,
-                isCalculated: true,
-              });
-            } else {
-              await tx.insert("fields", {
-                instanceId: scheduleE!._id,
-                fieldKey: update.fieldKey,
-                value: update.value,
-                isManualOverride: false,
-                isCalculated: true,
-              });
-            }
-          }
-          
-          // Mark as synced
-          const now = Date.now();
-          await tx.patch(k1._id, {
-            syncStatus: "synced",
-            syncedAt: now,
-          });
-          
-          // Log the sync
-          await tx.insert("auditLogs", {
-            returnId: partnerIdString as Id<"returns">,
-            userId: args.userId,
-            action: "K-1 Sync",
-            previousValue: null,
-            newValue: {
-              k1RecordId: k1._id,
-              businessReturnId: k1.returnId,
-              syncedAt: now,
-            },
-            source: "k1_sync",
-            timestamp: now,
-          });
-          
-          return { success: true, syncedAt: now };
+        }
+        
+        // Mark as synced
+        const now = Date.now();
+        await ctx.db.patch(k1._id, {
+          syncStatus: "synced",
+          syncedAt: now,
         });
         
-        if (syncResult.success) {
-          results.succeeded++;
-        } else {
-          results.failed++;
-          results.errors.push(syncResult.error || "Unknown error");
-        }
+        // Log the sync
+        await ctx.db.insert("auditLogs", {
+          returnId: partnerIdString as Id<"returns">,
+          userId: args.userId,
+          action: "K-1 Sync",
+          previousValue: null,
+          newValue: {
+            k1RecordId: k1._id,
+            businessReturnId: k1.returnId,
+            syncedAt: now,
+          },
+          source: "k1_sync",
+          timestamp: now,
+        });
+        
+        results.succeeded++;
       } catch (error) {
         results.failed++;
-        results.errors.push(`Error syncing K-1 ${k1Record._id}: ${error}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        results.errors.push(`Error syncing K-1 ${k1Record._id}: ${errorMsg}`);
         
         // Mark as error
         await ctx.db.patch(k1Record._id, { syncStatus: "error" });

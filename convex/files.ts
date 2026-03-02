@@ -15,7 +15,7 @@ export const getImageUrl = query({
 /**
  * Generate a temporary access URL for document viewing.
  * Convex storage URLs are private by default - only the uploader can access them.
- * For IRS Publication 1345 compliance, access is logged for audit.
+ * For IRS Publication 1345 compliance, access is logged to auditLogs.
  * 
  * NOTE: This returns the Convex storage URL. Actual signed/temporary URLs
  * would require external storage (S3, etc.) with signed URL capability.
@@ -30,9 +30,19 @@ export const generateTemporaryAccessUrl = mutation({
         const identity = await ctx.auth.getUserIdentity();
         const userId = identity?.subject || "anonymous";
         
-        // Use the internal logEvent mutation
-        // Note: In production, this should insert to a dedicated documentAccessLogs table
-        console.log(`[DOC_ACCESS] view: storageId=${args.storageId}, userId=${userId}, returnId=${args.returnId}, time=${Date.now()}`);
+        // Use the audit log for IRS-compliant audit trail (no PII in console)
+        // Document access is logged via logEvent to auditLogs table
+        const timestamp = Date.now();
+        await ctx.db.insert("auditLogs", {
+            returnId: args.returnId,
+            userId,
+            action: "Document View",
+            fieldKey: undefined,
+            previousValue: null,
+            newValue: { storageId: args.storageId, accessType: "view" },
+            source: "document_access",
+            timestamp,
+        });
         
         const url = await ctx.storage.getUrl(args.storageId);
         if (!url) throw new Error("File not found");
@@ -57,7 +67,17 @@ export const logDocumentAccess = internalMutation({
         accessType: v.string(), // "view", "download", "upload"
     },
     handler: async (ctx, args) => {
-        // This would log to auditLogs or a separate documentAccessLogs table
-        console.log(`[DOC_ACCESS] ${args.accessType}: storageId=${args.storageId}, userId=${args.userId}, returnId=${args.returnId}, time=${Date.now()}`);
+        // Log to auditLogs table for IRS-compliant audit trail
+        // No sensitive data in console logs
+        await ctx.db.insert("auditLogs", {
+            returnId: args.returnId,
+            userId: args.userId,
+            action: `Document ${args.accessType.charAt(0).toUpperCase() + args.accessType.slice(1)}`,
+            fieldKey: undefined,
+            previousValue: null,
+            newValue: { storageId: args.storageId, accessType: args.accessType },
+            source: "document_access",
+            timestamp: Date.now(),
+        });
     },
 });

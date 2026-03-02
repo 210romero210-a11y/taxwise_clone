@@ -36,19 +36,17 @@ export const getFieldsByForm = query({
     year: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("fieldDefinitions");
-
     if (args.year !== undefined) {
       return await ctx.db
         .query("fieldDefinitions")
         .withIndex("by_formCode_year", (q) =>
-          q.eq("formCode", args.formCode).eq("year", args.year)
+          q.eq("formCode", args.formCode).eq("year", args.year!)
         )
         .collect();
     }
 
     // If no year specified, get all versions of the form
-    const allDefinitions = await query.collect();
+    const allDefinitions = await ctx.db.query("fieldDefinitions").collect();
     return allDefinitions.filter((d) => d.formCode === args.formCode);
   },
 });
@@ -68,7 +66,7 @@ export const getCalculatedFields = query({
       definitions = await ctx.db
         .query("fieldDefinitions")
         .withIndex("by_formCode_year", (q) =>
-          q.eq("formCode", args.formCode).eq("year", args.year)
+          q.eq("formCode", args.formCode).eq("year", args.year!)
         )
         .collect();
     } else {
@@ -101,7 +99,7 @@ export const getFieldsByCategory = query({
       definitions = await ctx.db
         .query("fieldDefinitions")
         .withIndex("by_formCode_year", (q) =>
-          q.eq("formCode", args.formCode).eq("year", args.year)
+          q.eq("formCode", args.formCode).eq("year", args.year!)
         )
         .collect();
     } else {
@@ -128,7 +126,7 @@ export const getRequiredFields = query({
       definitions = await ctx.db
         .query("fieldDefinitions")
         .withIndex("by_formCode_year", (q) =>
-          q.eq("formCode", args.formCode).eq("year", args.year)
+          q.eq("formCode", args.formCode).eq("year", args.year!)
         )
         .collect();
     } else {
