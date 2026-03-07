@@ -132,36 +132,49 @@ export default defineSchema({
   // =============================================================================
   // MEF ENGINE - MODERNIZED E-FILE TRANSMISSION
   // =============================================================================
-  // MeF submission tracking
+  // MeF submission tracking with enhanced IRS receipt status
   mefSubmissions: defineTable({
     returnId: v.id("returns"),
     submissionType: v.string(), // "1040", "1120", "941", etc.
     taxYear: v.number(),
     // XML Payload
     xmlPayloadId: v.optional(v.id("_storage")),
-    xmlStatus: v.string(), // "generated", "validated", "transmitted", "accepted", "rejected"
+    xmlStatus: v.string(), // "generated", "validated", "transmitting", "accepted", "rejected"
     // IRS Transmission
     irsSubmissionId: v.optional(v.string()), // IRS assigned submission ID
     irsReceiptTimestamp: v.optional(v.number()),
     irsAcknowledgmentCode: v.optional(v.string()), // "ACCEPTED", "REJECTED"
     irsErrorCodes: v.optional(v.array(v.string())),
+    // IRS Business Rule Validation Results
+    irsBusinessRuleErrors: v.optional(v.array(v.string())),
     // Transmission details
     transmissionAttempts: v.optional(v.number()),
     lastTransmissionError: v.optional(v.string()),
+    // Security - IRS Pub 4164 requirements
+    originatingIP: v.optional(v.string()), // Taxpayer's IP for audit trail
+    efin: v.optional(v.string()), // EFIN of ERO
+    preparerPTIN: v.optional(v.string()), // Preparer PTIN
+    eroSignature: v.optional(v.string()), // ERO signature timestamp
+    // Submission tracking
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_return", ["returnId"]).index("by_irs_submission", ["irsSubmissionId"]),
+  }).index("by_return", ["returnId"]).index("by_irs_submission", ["irsSubmissionId"]).index("by_status", ["xmlStatus"]),
 
-  // MeF validation rules results
+  // MeF validation rules results with IRS error code mapping
   mefValidationResults: defineTable({
     submissionId: v.id("mefSubmissions"),
-    ruleId: v.string(), // MeF business rule identifier
+    ruleId: v.string(), // MeF business rule identifier (e.g., "R0000-001", "F1040-001")
     ruleName: v.string(),
     severity: v.string(), // "error", "warning"
     message: v.string(),
     fieldKey: v.optional(v.string()),
     isPassed: v.boolean(),
-  }).index("by_submission", ["submissionId"]),
+    // IRS-specific fields
+    irsErrorCode: v.optional(v.string()), // IRS error code from acknowledgment
+    irsErrorMessage: v.optional(v.string()), // Original IRS error message
+    translatedMessage: v.optional(v.string()), // Bilingual translated message
+    locale: v.optional(v.string()), // "en" or "es"
+  }).index("by_submission", ["submissionId"]).index("by_ruleId", ["ruleId"]),
 
   // =============================================================================
   // BILINGUAL SUPPORT ENGINE - EN/ES LOCALIZATION
