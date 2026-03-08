@@ -690,3 +690,434 @@ export const seedDefaultForms = mutation({
     };
   },
 });
+
+// =============================================================================
+// ADDITIONAL FORM DEFINITIONS - W-2, W-4, 1099-NEC, 1099-MISC, STATE FORMS
+// =============================================================================
+
+/**
+ * Seed additional tax form definitions: W-2, W-4, 1099-NEC, 1099-MISC, State Withholding
+ */
+export const seedAdditionalTaxForms = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const currentYear = new Date().getFullYear();
+    const seedYear = currentYear - 1;
+    
+    const seededForms = [];
+    
+    // Form W-2 - Wage and Tax Statement
+    const formW2Id = await ctx.db.insert("formDefinitions", {
+      formCode: "W2",
+      year: seedYear,
+      entityType: "Individual",
+      formName: "Wage and Tax Statement",
+      isActive: true,
+      metadata: {
+        irsFormNumber: "W-2",
+        taxYear: seedYear,
+        description: "Annual wage and tax statement from employer",
+        dueDate: "January 31",
+        formType: "income_document",
+        formCategory: "Withholding",
+      },
+      sections: [
+        {
+          sectionId: "control",
+          title: "Control Number",
+          fields: [
+            { fieldKey: "ControlNumber", label: "Control Number", type: "text", required: false },
+          ],
+        },
+        {
+          sectionId: "employee",
+          title: "Employee Information",
+          fields: [
+            { fieldKey: "EmployeeSSN", label: "Employee's Social Security Number", type: "text", required: true, placeholder: "XXX-XX-XXXX" },
+            { fieldKey: "EmployeeFirstName", label: "Employee's First Name", type: "text", required: true },
+            { fieldKey: "EmployeeMiddleInitial", label: "Employee's Middle Initial", type: "text", required: false },
+            { fieldKey: "EmployeeLastName", label: "Employee's Last Name", type: "text", required: true },
+            { fieldKey: "EmployeeSuffix", label: "Suffix", type: "text", required: false },
+            { fieldKey: "EmployeeAddress", label: "Employee's Address", type: "text", required: true },
+            { fieldKey: "EmployeeCity", label: "City", type: "text", required: true },
+            { fieldKey: "EmployeeState", label: "State", type: "text", required: true },
+            { fieldKey: "EmployeeZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "employer",
+          title: "Employer Information",
+          fields: [
+            { fieldKey: "EmployerEIN", label: "Employer's EIN", type: "text", required: true, placeholder: "XX-XXXXXXX" },
+            { fieldKey: "EmployerName", label: "Employer's Name", type: "text", required: true },
+            { fieldKey: "EmployerAddress", label: "Employer's Address", type: "text", required: true },
+            { fieldKey: "EmployerCity", label: "City", type: "text", required: true },
+            { fieldKey: "EmployerState", label: "State", type: "text", required: true },
+            { fieldKey: "EmployerZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "wages",
+          title: "Wages and Taxes",
+          description: "Box 1-17",
+          subsections: [
+            {
+              title: "Federal Income Tax Withholding",
+              fields: [
+                { fieldKey: "Box1", label: "Wages, tips, other compensation", type: "currency", required: true, irsLine: "1" },
+                { fieldKey: "Box2", label: "Federal income tax withheld", type: "currency", required: true, irsLine: "2" },
+              ],
+            },
+            {
+              title: "Social Security and Medicare",
+              fields: [
+                { fieldKey: "Box3", label: "Social Security wages", type: "currency", required: true, irsLine: "3" },
+                { fieldKey: "Box4", label: "Social Security tax withheld", type: "currency", required: true, irsLine: "4" },
+                { fieldKey: "Box5", label: "Medicare wages and tips", type: "currency", required: true, irsLine: "5" },
+                { fieldKey: "Box6", label: "Medicare tax withheld", type: "currency", required: true, irsLine: "6" },
+                { fieldKey: "Box7", label: "Social Security tips", type: "currency", required: false, irsLine: "7" },
+                { fieldKey: "Box8", label: "Allocated tips", type: "currency", required: false, irsLine: "8" },
+                { fieldKey: "Box10", label: "Dependent care benefits", type: "currency", required: false, irsLine: "10" },
+              ],
+            },
+            {
+              title: "Retirement and Benefits",
+              fields: [
+                { fieldKey: "Box11", label: "Nonqualified plans", type: "currency", required: false, irsLine: "11" },
+                { fieldKey: "Box12a", label: "Code A - 401(k) contributions", type: "currency", required: false, irsLine: "12a" },
+                { fieldKey: "Box12b", label: "Code B - Section 457 contributions", type: "currency", required: false, irsLine: "12b" },
+                { fieldKey: "Box12c", label: "Code C - Social Security tax on tips", type: "currency", required: false, irsLine: "12c" },
+                { fieldKey: "Box12d", label: "Code D - Cafeteria plan", type: "currency", required: false, irsLine: "12d" },
+              ],
+            },
+            {
+              title: "State Tax Information",
+              fields: [
+                { fieldKey: "Box15", label: "State", type: "text", required: false, irsLine: "15" },
+                { fieldKey: "Box16", label: "State wages", type: "currency", required: false, irsLine: "16" },
+                { fieldKey: "Box17", label: "State income tax", type: "currency", required: false, irsLine: "17" },
+              ],
+            },
+            {
+              title: "Local Tax Information",
+              fields: [
+                { fieldKey: "Box18", label: "Local wages", type: "currency", required: false, irsLine: "18" },
+                { fieldKey: "Box19", label: "Local income tax", type: "currency", required: false, irsLine: "19" },
+                { fieldKey: "Box20", label: "Locality name", type: "text", required: false, irsLine: "20" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    seededForms.push({ formCode: "W2", id: formW2Id });
+
+    // Form W-4 - Employee's Withholding Certificate
+    const formW4Id = await ctx.db.insert("formDefinitions", {
+      formCode: "W4",
+      year: seedYear,
+      entityType: "Individual",
+      formName: "Employee's Withholding Certificate",
+      isActive: true,
+      metadata: {
+        irsFormNumber: "W-4",
+        taxYear: seedYear,
+        description: "Employee's withholding certificate for federal tax withholding",
+        dueDate: "On employment start",
+        formType: "withholding_certificate",
+        formCategory: "Withholding",
+      },
+      sections: [
+        {
+          sectionId: "personal",
+          title: "Personal Information",
+          fields: [
+            { fieldKey: "FirstName", label: "First Name", type: "text", required: true },
+            { fieldKey: "MiddleInitial", label: "Middle Initial", type: "text", required: false },
+            { fieldKey: "LastName", label: "Last Name", type: "text", required: true },
+            { fieldKey: "SSN", label: "Social Security Number", type: "text", required: true, placeholder: "XXX-XX-XXXX" },
+            { fieldKey: "Address", label: "Address", type: "text", required: true },
+            { fieldKey: "City", label: "City", type: "text", required: true },
+            { fieldKey: "State", label: "State", type: "text", required: true },
+            { fieldKey: "ZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "filing_status",
+          title: "Step 1 - Filing Status",
+          fields: [
+            { fieldKey: "FilingStatusSingle", label: "Single or Married filing separately", type: "boolean", required: false },
+            { fieldKey: "FilingStatusMFJ", label: "Married filing jointly", type: "boolean", required: false },
+            { fieldKey: "FilingStatusHOH", label: "Head of household", type: "boolean", required: false },
+          ],
+        },
+        {
+          sectionId: "dependents",
+          title: "Step 3 - Claim Dependents",
+          fields: [
+            { fieldKey: "Step3Children", label: "Number of qualifying children under 17", type: "number", required: false, placeholder: "0" },
+            { fieldKey: "Step3Other", label: "Number of other dependents", type: "number", required: false, placeholder: "0" },
+            { fieldKey: "Step3Total", label: "Total claiming dependent credit", type: "currency", required: false, helpText: "Multiply total by $2,000" },
+          ],
+        },
+        {
+          sectionId: "other_income",
+          title: "Step 4a - Other Income",
+          fields: [
+            { fieldKey: "Step4aOtherIncome", label: "Other income (not from jobs)", type: "currency", required: false },
+          ],
+        },
+        {
+          sectionId: "deductions",
+          title: "Step 4b - Deductions",
+          fields: [
+            { fieldKey: "Step4bDeductions", label: "Deductions", type: "currency", required: false },
+          ],
+        },
+        {
+          sectionId: "extra_withholding",
+          title: "Step 4c - Extra Withholding",
+          fields: [
+            { fieldKey: "Step4cExtraWithholding", label: "Extra withholding", type: "currency", required: false },
+          ],
+        },
+        {
+          sectionId: "multiple_jobs",
+          title: "Step 2 - Multiple Jobs or Spouse Works",
+          fields: [
+            { fieldKey: "Step2a", label: "Complete if you have multiple jobs or spouse works", type: "boolean", required: false },
+            { fieldKey: "Step2b", label: "Complete if you use the Higher Rate Method", type: "boolean", required: false },
+          ],
+        },
+        {
+          sectionId: "signature",
+          title: "Signature",
+          fields: [
+            { fieldKey: "EmployeeSignature", label: "Employee's signature", type: "text", required: true },
+            { fieldKey: "DateSigned", label: "Date", type: "date", required: true },
+          ],
+        },
+      ],
+    });
+    seededForms.push({ formCode: "W4", id: formW4Id });
+
+    // Form 1099-NEC - Nonemployee Compensation
+    const form1099NECId = await ctx.db.insert("formDefinitions", {
+      formCode: "1099NEC",
+      year: seedYear,
+      entityType: "Individual",
+      formName: "Nonemployee Compensation",
+      isActive: true,
+      metadata: {
+        irsFormNumber: "1099-NEC",
+        taxYear: seedYear,
+        description: "Report nonemployee compensation paid to contractors",
+        dueDate: "January 31",
+        formType: "income_document",
+        formCategory: "Income - 1099",
+      },
+      sections: [
+        {
+          sectionId: "payer",
+          title: "Payer Information",
+          fields: [
+            { fieldKey: "PayerTIN", label: "Payer's TIN (EIN)", type: "text", required: true, placeholder: "XX-XXXXXXX" },
+            { fieldKey: "PayerName", label: "Payer's Name", type: "text", required: true },
+            { fieldKey: "PayerAddress", label: "Payer's Address", type: "text", required: true },
+            { fieldKey: "PayerCity", label: "City", type: "text", required: true },
+            { fieldKey: "PayerState", label: "State", type: "text", required: true },
+            { fieldKey: "PayerZIP", label: "ZIP Code", type: "text", required: true },
+            { fieldKey: "PayerPhone", label: "Payer's Phone", type: "text", required: false },
+          ],
+        },
+        {
+          sectionId: "recipient",
+          title: "Recipient Information",
+          fields: [
+            { fieldKey: "RecipientTIN", label: "Recipient's TIN (SSN or EIN)", type: "text", required: true, placeholder: "XXX-XX-XXXX or XX-XXXXXXX" },
+            { fieldKey: "RecipientName", label: "Recipient's Name", type: "text", required: true },
+            { fieldKey: "RecipientBusinessName", label: "Recipient's Business Name", type: "text", required: false },
+            { fieldKey: "RecipientAddress", label: "Recipient's Address", type: "text", required: true },
+            { fieldKey: "RecipientCity", label: "City", type: "text", required: true },
+            { fieldKey: "RecipientState", label: "State", type: "text", required: true },
+            { fieldKey: "RecipientZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "compensation",
+          title: "Nonemployee Compensation",
+          fields: [
+            { fieldKey: "Box1", label: "Nonemployee compensation", type: "currency", required: true, irsLine: "1", helpText: "Total payments for services rendered as nonemployee" },
+            { fieldKey: "Box2", label: "Federal income tax withheld", type: "currency", required: false, irsLine: "2" },
+          ],
+        },
+        {
+          sectionId: "state_tax",
+          title: "State Tax Information",
+          fields: [
+            { fieldKey: "Box3", label: "State", type: "text", required: false },
+            { fieldKey: "Box4", label: "State income tax", type: "currency", required: false },
+            { fieldKey: "Box5", label: "Locality name", type: "text", required: false },
+            { fieldKey: "Box6", label: "Local income tax", type: "currency", required: false },
+          ],
+        },
+      ],
+    });
+    seededForms.push({ formCode: "1099NEC", id: form1099NECId });
+
+    // Form 1099-MISC - Miscellaneous Income
+    const form1099MISId = await ctx.db.insert("formDefinitions", {
+      formCode: "1099MISC",
+      year: seedYear,
+      entityType: "Individual",
+      formName: "Miscellaneous Income",
+      isActive: true,
+      metadata: {
+        irsFormNumber: "1099-MISC",
+        taxYear: seedYear,
+        description: "Report various types of miscellaneous income",
+        dueDate: "January 31",
+        formType: "income_document",
+        formCategory: "Income - 1099",
+      },
+      sections: [
+        {
+          sectionId: "payer",
+          title: "Payer Information",
+          fields: [
+            { fieldKey: "PayerTIN", label: "Payer's TIN (EIN)", type: "text", required: true, placeholder: "XX-XXXXXXX" },
+            { fieldKey: "PayerName", label: "Payer's Name", type: "text", required: true },
+            { fieldKey: "PayerAddress", label: "Payer's Address", type: "text", required: true },
+            { fieldKey: "PayerCity", label: "City", type: "text", required: true },
+            { fieldKey: "PayerState", label: "State", type: "text", required: true },
+            { fieldKey: "PayerZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "recipient",
+          title: "Recipient Information",
+          fields: [
+            { fieldKey: "RecipientTIN", label: "Recipient's TIN (SSN or EIN)", type: "text", required: true, placeholder: "XXX-XX-XXXX or XX-XXXXXXX" },
+            { fieldKey: "RecipientName", label: "Recipient's Name", type: "text", required: true },
+            { fieldKey: "RecipientBusinessName", label: "Recipient's Business Name", type: "text", required: false },
+            { fieldKey: "RecipientAddress", label: "Recipient's Address", type: "text", required: true },
+            { fieldKey: "RecipientCity", label: "City", type: "text", required: true },
+            { fieldKey: "RecipientState", label: "State", type: "text", required: true },
+            { fieldKey: "RecipientZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "income",
+          title: "Income",
+          fields: [
+            { fieldKey: "Box1", label: "Rents", type: "currency", required: false, irsLine: "1" },
+            { fieldKey: "Box2", label: "Royalties", type: "currency", required: false, irsLine: "2" },
+            { fieldKey: "Box3", label: "Other income", type: "currency", required: false, irsLine: "3" },
+            { fieldKey: "Box4", label: "Federal income tax withheld", type: "currency", required: false, irsLine: "4" },
+            { fieldKey: "Box5", label: "Fishing boat proceeds", type: "currency", required: false, irsLine: "5" },
+            { fieldKey: "Box6", label: "Medical and health care payments", type: "currency", required: false, irsLine: "6" },
+            { fieldKey: "Box7", label: "Nonemployee compensation", type: "currency", required: false, irsLine: "7" },
+            { fieldKey: "Box8", label: "Substitute payments in lieu of dividends", type: "currency", required: false, irsLine: "8" },
+            { fieldKey: "Box9", label: "Crop insurance proceeds", type: "currency", required: false, irsLine: "9" },
+          ],
+        },
+        {
+          sectionId: "direct_sales",
+          title: "Direct Sales Indicator",
+          fields: [
+            { fieldKey: "Box10", label: "Part III - Check if applicable", type: "boolean", irsLine: "10" },
+          ],
+        },
+        {
+          sectionId: "state_tax",
+          title: "State Tax Information",
+          fields: [
+            { fieldKey: "Box13", label: "State", type: "text", required: false },
+            { fieldKey: "Box14", label: "State income tax", type: "currency", required: false },
+            { fieldKey: "Box15", label: "Locality name", type: "text", required: false },
+            { fieldKey: "Box16", label: "Local income tax", type: "currency", required: false },
+          ],
+        },
+      ],
+    });
+    seededForms.push({ formCode: "1099MISC", id: form1099MISId });
+
+    // State Tax Withholding Form - Generic State WH
+    const formStateWHId = await ctx.db.insert("formDefinitions", {
+      formCode: "STATE_WH",
+      year: seedYear,
+      entityType: "Individual",
+      formName: "State Tax Withholding",
+      isActive: true,
+      metadata: {
+        irsFormNumber: "State-WH",
+        taxYear: seedYear,
+        description: "State income tax withholding certificate",
+        dueDate: "On employment start",
+        formType: "state_withholding",
+        formCategory: "Withholding",
+        stateSpecific: true,
+      },
+      sections: [
+        {
+          sectionId: "state_info",
+          title: "State Information",
+          fields: [
+            { fieldKey: "StateCode", label: "State", type: "text", required: true, helpText: "Two-letter state code (e.g., CA, NY, TX)" },
+            { fieldKey: "StateFormNumber", label: "State Form Number", type: "text", required: false },
+          ],
+        },
+        {
+          sectionId: "employee_info",
+          title: "Employee Information",
+          fields: [
+            { fieldKey: "EmployeeSSN", label: "Social Security Number", type: "text", required: true, placeholder: "XXX-XX-XXXX" },
+            { fieldKey: "EmployeeFirstName", label: "First Name", type: "text", required: true },
+            { fieldKey: "EmployeeLastName", label: "Last Name", type: "text", required: true },
+            { fieldKey: "EmployeeAddress", label: "Address", type: "text", required: true },
+            { fieldKey: "EmployeeCity", label: "City", type: "text", required: true },
+            { fieldKey: "EmployeeState", label: "State", type: "text", required: true },
+            { fieldKey: "EmployeeZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "employer_info",
+          title: "Employer Information",
+          fields: [
+            { fieldKey: "EmployerEIN", label: "Employer ID (EIN or State ID)", type: "text", required: true },
+            { fieldKey: "EmployerName", label: "Employer Name", type: "text", required: true },
+            { fieldKey: "EmployerAddress", label: "Address", type: "text", required: true },
+            { fieldKey: "EmployerCity", label: "City", type: "text", required: true },
+            { fieldKey: "EmployerState", label: "State", type: "text", required: true },
+            { fieldKey: "EmployerZIP", label: "ZIP Code", type: "text", required: true },
+          ],
+        },
+        {
+          sectionId: "withholding",
+          title: "Withholding Election",
+          fields: [
+            { fieldKey: "WithholdingType", label: "Withholding Type", type: "select", required: true, options: ["Regular", "Supplemental", "Exempt"] },
+            { fieldKey: "Allowances", label: "Number of Allowances", type: "number", required: false },
+            { fieldKey: "AdditionalWithholding", label: "Additional Amount to Withhold", type: "currency", required: false },
+            { fieldKey: "ExemptFromWithholding", label: "Claim Exemption from Withholding", type: "boolean", required: false },
+          ],
+        },
+        {
+          sectionId: "certification",
+          title: "Certification",
+          fields: [
+            { fieldKey: "EmployeeSignature", label: "Employee Signature", type: "text", required: true },
+            { fieldKey: "DateSigned", label: "Date", type: "date", required: true },
+          ],
+        },
+      ],
+    });
+    seededForms.push({ formCode: "STATE_WH", id: formStateWHId });
+
+    return {
+      message: `Successfully seeded ${seededForms.length} additional tax form definitions for tax year ${seedYear}`,
+      seeded: seededForms.length,
+      forms: seededForms,
+    };
+  },
+});

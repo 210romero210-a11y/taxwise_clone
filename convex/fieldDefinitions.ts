@@ -327,7 +327,7 @@ export const seedDefaultFields = mutation({
       };
     }
 
-    const seededFields = [];
+    const seededFields: { fieldKey: string; id: Id<"fieldDefinitions"> }[] = [];
 
     // Line 1z (Wages) - currency, required, income
     const line1zId = await ctx.db.insert("fieldDefinitions", {
@@ -831,7 +831,7 @@ export const seedAdditional1040Fields = mutation({
       .collect();
 
     const existingKeys = new Set(existingFields.map((f) => f.fieldKey));
-    const seededFields = [];
+    const seededFields: { fieldKey: string; id: Id<"fieldDefinitions"> }[] = [];
 
     // Schedule C - Profit or Loss from Business
     const scheduleCFields = [
@@ -948,6 +948,199 @@ export const seedAdditional1040Fields = mutation({
 
     return {
       message: `Successfully seeded ${seededFields.length} additional Form 1040 field definitions for tax year ${seedYear}`,
+      seeded: seededFields.length,
+      fields: seededFields,
+    };
+  },
+});
+
+/**
+ * Seed field definitions for W-2, W-4, 1099-NEC, 1099-MISC, and State Withholding forms
+ */
+export const seedWageIncomeFields = mutation({
+  args: {
+    year: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const seedYear = args.year || new Date().getFullYear() - 1;
+    
+    // W-2 Field Definitions
+    const w2Fields = [
+      // Employee Information
+      { key: "EmployeeSSN", label: "Employee's Social Security Number", labelEs: "Número de Seguro Social del empleado", fieldType: "text", category: "info", irsLine: "", required: true, helpText: "Enter SSN in format XXX-XX-XXXX", placeholder: "XXX-XX-XXXX" },
+      { key: "EmployeeFirstName", label: "Employee's First Name", labelEs: "Nombre del empleado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeMiddleInitial", label: "Employee's Middle Initial", labelEs: "Inicial del segundo nombre", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "EmployeeLastName", label: "Employee's Last Name", labelEs: "Apellido del empleado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeSuffix", label: "Suffix", labelEs: "Sufijo", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "EmployeeAddress", label: "Employee's Address", labelEs: "Dirección del empleado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      // Employer Information
+      { key: "EmployerEIN", label: "Employer's EIN", labelEs: "EIN del empleador", fieldType: "text", category: "info", irsLine: "", required: true, helpText: "Enter EIN in format XX-XXXXXXX", placeholder: "XX-XXXXXXX" },
+      { key: "EmployerName", label: "Employer's Name", labelEs: "Nombre del empleador", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerAddress", label: "Employer's Address", labelEs: "Dirección del empleador", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      // Box fields
+      { key: "Box1", label: "Wages, tips, other compensation", labelEs: "Salarios, propinas, otras compensaciones", fieldType: "currency", category: "income", irsLine: "1", required: true, helpText: "Total wages, tips, and other compensation paid to employee" },
+      { key: "Box2", label: "Federal income tax withheld", labelEs: "Impuesto federal sobre el ingreso retenido", fieldType: "currency", category: "info", irsLine: "2", required: true, helpText: "Federal income tax withheld from wages" },
+      { key: "Box3", label: "Social Security wages", labelEs: "Salarios del Seguro Social", fieldType: "currency", category: "income", irsLine: "3", required: true, helpText: "Wages subject to Social Security tax" },
+      { key: "Box4", label: "Social Security tax withheld", labelEs: "Impuesto del Seguro Social retenido", fieldType: "currency", category: "info", irsLine: "4", required: true },
+      { key: "Box5", label: "Medicare wages and tips", labelEs: "Salarios y propinas de Medicare", fieldType: "currency", category: "income", irsLine: "5", required: true, helpText: "Wages subject to Medicare tax" },
+      { key: "Box6", label: "Medicare tax withheld", labelEs: "Impuesto de Medicare retenido", fieldType: "currency", category: "info", irsLine: "6", required: true },
+      { key: "Box7", label: "Social Security tips", labelEs: "Propinas del Seguro Social", fieldType: "currency", category: "income", irsLine: "7", required: false },
+      { key: "Box8", label: "Allocated tips", labelEs: "Propinas asignadas", fieldType: "currency", category: "income", irsLine: "8", required: false },
+      { key: "Box10", label: "Dependent care benefits", labelEs: "Beneficios de cuidado de dependientes", fieldType: "currency", category: "income", irsLine: "10", required: false },
+      { key: "Box11", label: "Nonqualified plans", labelEs: "Planes no calificados", fieldType: "currency", category: "income", irsLine: "11", required: false },
+      { key: "Box12a", label: "Code A - 401(k) contributions", labelEs: "Código A - Contribuciones 401(k)", fieldType: "currency", category: "income", irsLine: "12a", required: false, helpText: "Elective deferrals to 401(k) plan" },
+      { key: "Box12b", label: "Code B - Section 457 contributions", labelEs: "Código B - Contribuciones Sección 457", fieldType: "currency", category: "income", irsLine: "12b", required: false },
+      { key: "Box12c", label: "Code C - Social Security tax on tips", labelEs: "Código C - Impuesto del Seguro Social sobre propinas", fieldType: "currency", category: "info", irsLine: "12c", required: false },
+      { key: "Box12d", label: "Code D - Cafeteria plan", labelEs: "Código D - Plan de cafetería", fieldType: "currency", category: "income", irsLine: "12d", required: false },
+      { key: "Box15", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "15", required: false },
+      { key: "Box16", label: "State wages", labelEs: "Salarios estatales", fieldType: "currency", category: "income", irsLine: "16", required: false },
+      { key: "Box17", label: "State income tax", labelEs: "Impuesto estatal sobre el ingreso", fieldType: "currency", category: "info", irsLine: "17", required: false },
+      { key: "Box18", label: "Local wages", labelEs: "Salarios locales", fieldType: "currency", category: "income", irsLine: "18", required: false },
+      { key: "Box19", label: "Local income tax", labelEs: "Impuesto local sobre el ingreso", fieldType: "currency", category: "info", irsLine: "19", required: false },
+      { key: "Box20", label: "Locality name", labelEs: "Nombre de la localidad", fieldType: "text", category: "info", irsLine: "20", required: false },
+    ];
+
+    // W-4 Field Definitions
+    const w4Fields = [
+      { key: "FirstName", label: "First Name", labelEs: "Nombre", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "MiddleInitial", label: "Middle Initial", labelEs: "Inicial del segundo nombre", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "LastName", label: "Last Name", labelEs: "Apellido", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "SSN", label: "Social Security Number", labelEs: "Número de Seguro Social", fieldType: "text", category: "info", irsLine: "", required: true, placeholder: "XXX-XX-XXXX" },
+      { key: "Address", label: "Address", labelEs: "Dirección", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "City", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "State", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "ZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "FilingStatusSingle", label: "Single or Married filing separately", labelEs: "Soltero o Casado presentando por separado", fieldType: "boolean", category: "info", irsLine: "", required: false },
+      { key: "FilingStatusMFJ", label: "Married filing jointly", labelEs: "Casado presentando conjuntamente", fieldType: "boolean", category: "info", irsLine: "", required: false },
+      { key: "FilingStatusHOH", label: "Head of household", labelEs: "Cabeza de familia", fieldType: "boolean", category: "info", irsLine: "", required: false },
+      { key: "Step3Children", label: "Number of qualifying children under 17", labelEs: "Número de hijos calificados menores de 17", fieldType: "number", category: "info", irsLine: "3", required: false, helpText: "Enter number of qualifying children" },
+      { key: "Step3Other", label: "Number of other dependents", labelEs: "Número de otros dependientes", fieldType: "number", category: "info", irsLine: "3", required: false, helpText: "Enter number of other dependents" },
+      { key: "Step3Total", label: "Total claiming dependent credit", labelEs: "Total para reclamar crédito por dependientes", fieldType: "currency", category: "info", irsLine: "3", required: false, helpText: "Multiply total by $2,000" },
+      { key: "Step4aOtherIncome", label: "Other income (not from jobs)", labelEs: "Otros ingresos (no de empleos)", fieldType: "currency", category: "income", irsLine: "4a", required: false },
+      { key: "Step4bDeductions", label: "Deductions", labelEs: "Deducciones", fieldType: "currency", category: "deduction", irsLine: "4b", required: false },
+      { key: "Step4cExtraWithholding", label: "Extra withholding", labelEs: "Retención extra", fieldType: "currency", category: "info", irsLine: "4c", required: false },
+      { key: "Step2a", label: "Complete if you have multiple jobs or spouse works", labelEs: "Complete si tiene múltiples empleos o el cónyuge trabaja", fieldType: "boolean", category: "info", irsLine: "2", required: false },
+      { key: "Step2b", label: "Complete if you use the Higher Rate Method", labelEs: "Complete si usa el Método de Tasa Mayor", fieldType: "boolean", category: "info", irsLine: "2", required: false },
+      { key: "EmployeeSignature", label: "Employee's signature", labelEs: "Firma del empleado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "DateSigned", label: "Date", labelEs: "Fecha", fieldType: "date", category: "info", irsLine: "", required: true },
+    ];
+
+    // 1099-NEC Field Definitions
+    const necFields = [
+      { key: "PayerTIN", label: "Payer's TIN (EIN)", labelEs: "TIN del pagador (EIN)", fieldType: "text", category: "info", irsLine: "", required: true, placeholder: "XX-XXXXXXX" },
+      { key: "PayerName", label: "Payer's Name", labelEs: "Nombre del pagador", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "PayerAddress", label: "Payer's Address", labelEs: "Dirección del pagador", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "PayerCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "PayerState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "PayerZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "PayerPhone", label: "Payer's Phone", labelEs: "Teléfono del pagador", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "RecipientTIN", label: "Recipient's TIN (SSN or EIN)", labelEs: "TIN del receptor (SSN o EIN)", fieldType: "text", category: "info", irsLine: "", required: true, placeholder: "XXX-XX-XXXX or XX-XXXXXXX" },
+      { key: "RecipientName", label: "Recipient's Name", labelEs: "Nombre del receptor", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "RecipientBusinessName", label: "Recipient's Business Name", labelEs: "Nombre comercial del receptor", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "RecipientAddress", label: "Recipient's Address", labelEs: "Dirección del receptor", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "RecipientCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "RecipientState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "RecipientZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "Box1", label: "Nonemployee compensation", labelEs: "Compensación no empleado", fieldType: "currency", category: "income", irsLine: "1", required: true, helpText: "Total payments for services rendered as nonemployee" },
+      { key: "Box2", label: "Federal income tax withheld", labelEs: "Impuesto federal sobre el ingreso retenido", fieldType: "currency", category: "info", irsLine: "2", required: false },
+      { key: "Box3", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "Box4", label: "State income tax", labelEs: "Impuesto estatal sobre el ingreso", fieldType: "currency", category: "info", irsLine: "", required: false },
+      { key: "Box5", label: "Locality name", labelEs: "Nombre de la localidad", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "Box6", label: "Local income tax", labelEs: "Impuesto local sobre el ingreso", fieldType: "currency", category: "info", irsLine: "", required: false },
+    ];
+
+    // 1099-MISC Field Definitions
+    const miscFields = [
+      { key: "Box1", label: "Rents", labelEs: "Alquileres", fieldType: "currency", category: "income", irsLine: "1", required: false, helpText: "Rent payments received" },
+      { key: "Box2", label: "Royalties", labelEs: "Regalías", fieldType: "currency", category: "income", irsLine: "2", required: false },
+      { key: "Box3", label: "Other income", labelEs: "Otros ingresos", fieldType: "currency", category: "income", irsLine: "3", required: false },
+      { key: "Box4", label: "Federal income tax withheld", labelEs: "Impuesto federal sobre el ingreso retenido", fieldType: "currency", category: "info", irsLine: "4", required: false },
+      { key: "Box5", label: "Fishing boat proceeds", labelEs: "Ganancias de barco de pesca", fieldType: "currency", category: "income", irsLine: "5", required: false },
+      { key: "Box6", label: "Medical and health care payments", labelEs: "Pagos médicos y de atención médica", fieldType: "currency", category: "income", irsLine: "6", required: false },
+      { key: "Box7", label: "Nonemployee compensation", labelEs: "Compensación no empleado", fieldType: "currency", category: "income", irsLine: "7", required: false, helpText: "Used instead of 1099-NEC for prior years" },
+      { key: "Box8", label: "Substitute payments in lieu of dividends", labelEs: "Pagos sustitutos en lugar de dividendos", fieldType: "currency", category: "income", irsLine: "8", required: false },
+      { key: "Box9", label: "Crop insurance proceeds", labelEs: "Ganancias de seguro de cultivos", fieldType: "currency", category: "income", irsLine: "9", required: false },
+      { key: "Box10", label: "Check if applicable", labelEs: "Marque si aplica", fieldType: "boolean", category: "info", irsLine: "10", required: false, helpText: "Direct sales of $5,000 or more" },
+      { key: "Box13", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "Box14", label: "State income tax", labelEs: "Impuesto estatal sobre el ingreso", fieldType: "currency", category: "info", irsLine: "", required: false },
+      { key: "Box15", label: "Locality name", labelEs: "Nombre de la localidad", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "Box16", label: "Local income tax", labelEs: "Impuesto local sobre el ingreso", fieldType: "currency", category: "info", irsLine: "", required: false },
+    ];
+
+    // State Withholding Field Definitions
+    const stateWHFields = [
+      { key: "StateCode", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true, helpText: "Two-letter state code (e.g., CA, NY, TX)" },
+      { key: "StateFormNumber", label: "State Form Number", labelEs: "Número de formulario estatal", fieldType: "text", category: "info", irsLine: "", required: false },
+      { key: "EmployeeSSN", label: "Social Security Number", labelEs: "Número de Seguro Social", fieldType: "text", category: "info", irsLine: "", required: true, placeholder: "XXX-XX-XXXX" },
+      { key: "EmployeeFirstName", label: "First Name", labelEs: "Nombre", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeLastName", label: "Last Name", labelEs: "Apellido", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeAddress", label: "Address", labelEs: "Dirección", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployeeZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerEIN", label: "Employer ID (EIN or State ID)", labelEs: "ID del empleador (EIN o ID estatal)", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerName", label: "Employer Name", labelEs: "Nombre del empleador", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerAddress", label: "Address", labelEs: "Dirección", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerCity", label: "City", labelEs: "Ciudad", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerState", label: "State", labelEs: "Estado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "EmployerZIP", label: "ZIP Code", labelEs: "Código postal", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "WithholdingType", label: "Withholding Type", labelEs: "Tipo de retención", fieldType: "text", category: "info", irsLine: "", required: true, helpText: "Select Regular, Supplemental, or Exempt" },
+      { key: "Allowances", label: "Number of Allowances", labelEs: "Número de asignaciones", fieldType: "number", category: "info", irsLine: "", required: false },
+      { key: "AdditionalWithholding", label: "Additional Amount to Withhold", labelEs: "Monto adicional a retener", fieldType: "currency", category: "info", irsLine: "", required: false },
+      { key: "ExemptFromWithholding", label: "Claim Exemption from Withholding", labelEs: "Reclamar exención de retención", fieldType: "boolean", category: "info", irsLine: "", required: false },
+      { key: "EmployeeSignature", label: "Employee Signature", labelEs: "Firma del empleado", fieldType: "text", category: "info", irsLine: "", required: true },
+      { key: "DateSigned", label: "Date", labelEs: "Fecha", fieldType: "date", category: "info", irsLine: "", required: true },
+    ];
+
+    const seededFields: { formCode: string; fieldKey: string; id: Id<"fieldDefinitions"> }[] = [];
+    
+    // Helper function to seed fields for a form
+    const seedFieldsForForm = async (formCode: string, fields: any[]) => {
+      for (const field of fields) {
+        // Check if field already exists
+        const existing = await ctx.db
+          .query("fieldDefinitions")
+          .withIndex("by_formCode_year", (q) => q.eq("formCode", formCode).eq("year", seedYear))
+          .collect();
+        
+        const exists = existing.find((f) => f.fieldKey === field.key);
+        if (!exists) {
+          const id = await ctx.db.insert("fieldDefinitions", {
+            formCode,
+            year: seedYear,
+            fieldKey: field.key,
+            label: field.label,
+            labelEs: field.labelEs,
+            fieldType: field.fieldType,
+            isCalculated: false,
+            formula: undefined,
+            dependsOn: [],
+            isRequired: field.required || false,
+            category: field.category,
+            irsLineReference: field.irsLine,
+            helpText: field.helpText || "",
+            helpTextEs: field.helpText || "",
+          });
+          seededFields.push({ formCode, fieldKey: field.key, id });
+        }
+      }
+    };
+
+    // Seed all field definitions
+    await seedFieldsForForm("W2", w2Fields);
+    await seedFieldsForForm("W4", w4Fields);
+    await seedFieldsForForm("1099NEC", necFields);
+    await seedFieldsForForm("1099MISC", miscFields);
+    await seedFieldsForForm("STATE_WH", stateWHFields);
+
+    return {
+      message: `Successfully seeded ${seededFields.length} field definitions for W-2, W-4, 1099-NEC, 1099-MISC, and State Withholding forms for tax year ${seedYear}`,
       seeded: seededFields.length,
       fields: seededFields,
     };
